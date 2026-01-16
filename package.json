@@ -1,0 +1,30 @@
+{
+  "name": "splyt-technical-test",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "concurrently \"tsc --watch\" \"nodemon dist/server.js\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/helmet": "^4.0.0",
+    "@types/morgan": "^1.9.10",
+    "@types/socket.io": "^3.0.2",
+    "concurrently": "^9.0.0",
+    "nodemon": "^3.1.11",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.3"
+  }
+}
