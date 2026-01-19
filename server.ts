@@ -85,7 +85,7 @@ io.on("connection", (socket: Socket): void => {
       if (!datetimeDate) return true;
 
       const eventTime = new Date(entry.data.timestamp);
-      if (Number.isNaN(eventTime.getTime())) return false
+      if (Number.isNaN(eventTime.getTime())) return false;
       return eventTime >= datetimeDate;
     });
     history.forEach((entry) => {
@@ -114,7 +114,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req: Request, res: Response): void => {
   res.json({
-    message: "Data Ingestion Service with Real-time Updates!",
+    message: "Server is running",
     timestamp: new Date().toISOString(),
     requestCount: requestCount,
     receivedData: receivedData.length,
@@ -125,23 +125,36 @@ app.get("/", (req: Request, res: Response): void => {
 //*** API Endpoint **/
 app.post("/event", (req: Request, res: Response): void => {
   const data = req.body as EventRequestBody;
+  const driverId = data.data.driver;
+
+  if (!driverId) {
+    res.status(400).json({
+      success: false,
+      error: "liine 133:driver_id is required",
+    });
+    return;
+  }
 
   receivedData.push(data);
-  console.log(`Received data #${data}:`, data);
+  requestCount++;
+  console.log(`Received #${requestCount} for driver ${driverId}:`, data);
 
-  const broadcastData = {
-    type: "data_update",
-    ...data,
-  };
-
-  io.emit("data_received", broadcastData);
-  io.to("subscribers").emit("data_update", broadcastData);
+  // Broadcast driver location to subscribed clients
+  const driverRoom = getDriverRoom(driverId);
+  const subscribersCount = io.sockets.adapter.rooms.get(driverRoom)?.size || 0;
+  
+  io.to(driverRoom).emit("driver_location_update", {
+    type: "driver_location",
+    driverId,
+    event: data.event,
+    data: data.data,
+  });
 
   res.status(201).json({
     success: true,
     message: "Data received and broadcasted successfully",
     payload: data,
-    subscribersNotified: connectedClients.size,
+    subscribersNotified: subscribersCount,
   });
 });
 
