@@ -4,9 +4,10 @@ import cors from "cors";
 import morgan from "morgan";
 import helmet from "helmet";
 import http from "http";
+import https from "https";
 
 const app = express();
-const PORT: number = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
@@ -14,6 +15,9 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"],
   },
 });
+
+const webhook_url =
+  process.env.WEBHOOK_URL || "https://tech-task.splytech.dev/api/eng/tunnel";
 
 let receivedData: EventRequestBody[] = [];
 let requestCount = 0;
@@ -32,8 +36,37 @@ const parsedatetime = (value?: string): Date | null => {
 
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
-  
   return parsed;
+};
+
+const notifyWebhook = (publicUrl: string): void => {
+  try {
+    const payload = JSON.stringify({ public_url: publicUrl });
+    const url = new URL(webhook_url);
+    const options: https.RequestOptions = {
+      method: "POST",
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      port: url.port || 443,
+      rejectUnauthorized: false,
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, (res) => {
+      console.log(`Webhook status: ${res.statusCode}`);
+      console.log(`Webhook res: ${res}`);
+      res.on("data", () => {});
+    });
+    req.on("error", (err) => {
+      console.error("Failed to notify webhook", err);
+    });
+    req.write(payload);
+    req.end();
+  } catch (err) {
+    console.error("Failed to construct webhook request", err);
+  }
 };
 
 //*** Socket **/
@@ -159,9 +192,7 @@ app.post("/event", (req: Request, res: Response): void => {
 });
 
 app.get("/event", (req: Request, res: Response): void => {
-  const limitParam =
-    typeof req.query.limit === "string" ? req.query.limit : undefined;
-  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
   const recentData = receivedData.slice(-limit);
 
   res.json({
@@ -197,10 +228,6 @@ app.get("/subscribe", (req: Request, res: Response): void => {
     })}\n\n`,
   );
 
-  const sendUpdate = (data: any): void => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-  };
-
   const clientId = `sse-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 11)}`;
@@ -219,8 +246,6 @@ app.get("/subscribe", (req: Request, res: Response): void => {
     clearInterval(heartbeat);
     console.log(`SSE client disconnected: ${clientId}`);
   });
-
-  void sendUpdate;
 });
 
 app.delete("/event", (req: Request, res: Response): void => {
@@ -265,6 +290,8 @@ app.use((req: Request, res: Response): void => {
 server.listen(PORT, (): void => {
   console.log(`Server running on port ${PORT}`);
   console.log("WebSocket running on same host");
+    const publicUrl = process.env.PUBLIC_URL  || `https://m4493k74-3000.asse.devtunnels.ms/`;
+  notifyWebhook(publicUrl); // call webhook directly 
 });
 
 (module as any).exports = { app, server, io };
