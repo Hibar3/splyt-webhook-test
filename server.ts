@@ -18,6 +18,23 @@ const io = new SocketIOServer(server, {
 let receivedData: EventRequestBody[] = [];
 let requestCount = 0;
 let connectedClients: Set<string> = new Set<string>();
+const socketDriverSubscriptions: Map<string, string> = new Map<
+  string,
+  string
+>();
+
+// get unique room name for driver 
+const getDriverRoom = (driverId: string): string => `driver:${driverId}`;
+
+// parse datetime string to Date object
+const parsedatetime = (value?: string): Date | null => {
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  
+  return parsed;
+};
 
 //*** Socket **/
 io.on("connection", (socket: Socket): void => {
@@ -44,9 +61,48 @@ io.on("connection", (socket: Socket): void => {
     });
   });
 
-  socket.on("subscribe", (data: any): void => {
-    console.log(`Subscription request from ${socket.id}:`, data);
-    socket.join("subscribers");
+  socket.on("subscribe", (payload: DriverSubscriptionRequest): void => {
+    console.log(`Subscription request from ${socket.id}:`, payload);
+    const driverId = typeof payload?.driver_id === "string" ? payload.driver_id.trim() : "";
+    if (!driverId) {
+      socket.emit("driver_subscription_error", {
+        error: "driver_id is required",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    const since = payload.since;
+    const datetimeDate = parsedatetime(since);
+
+    const existingDriverId = socketDriverSubscriptions.get(socket.id);
+    if (existingDriverId && existingDriverId !== driverId) {
+      socket.leave(getDriverRoom(existingDriverId));
+    }
+    socketDriverSubscriptions.set(socket.id, driverId);
+    socket.join(getDriverRoom(driverId));
+    const history = receivedData.filter((entry) => {
+      if (entry.data.driver !== driverId) return false;
+      if (!datetimeDate) return true;
+
+      const eventTime = new Date(entry.data.timestamp);
+      if (Number.isNaN(eventTime.getTime())) return false
+      return eventTime >= datetimeDate;
+    });
+    history.forEach((entry) => {
+      socket.emit("driver_location_update", {
+        type: "driver_location",
+        driverId: entry.data.driver,
+        event: entry.event,
+        data: entry.data,
+        replay: true,
+      });
+    });
+    socket.emit("driver_subscription_success", {
+      driverId,
+      since: since ?? null,
+      subscriptionId: socket.id,
+      timestamp: new Date().toISOString(),
+    });
   });
 });
 

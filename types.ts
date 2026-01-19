@@ -14,3 +14,8 @@ type EventRequestBody = {
   event: EventInfo;
   data: EventData;
 };
+
+type DriverSubscriptionRequest = {
+  driver_id: string;
+  since?: string;
+};
