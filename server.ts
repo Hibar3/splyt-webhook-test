@@ -15,27 +15,11 @@ const io = new SocketIOServer(server, {
   },
 });
 
-type EventInfo = {
-  name: string;
-  time: string;
-};
-
-type EventData = {
-  driver: string;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-};
-
-type EventRequestBody = {
-  event: EventInfo;
-  data: EventData;
-};
-
 let receivedData: EventRequestBody[] = [];
 let requestCount = 0;
 let connectedClients: Set<string> = new Set<string>();
 
+//*** Socket **/
 io.on("connection", (socket: Socket): void => {
   console.log(`Client connected: ${socket.id}`);
   connectedClients.add(socket.id);
@@ -69,7 +53,7 @@ io.on("connection", (socket: Socket): void => {
 app.use(helmet());
 app.use(cors());
 app.use(morgan("combined"));
-// app.use(express.json({ limit: "25mb" }));
+app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req: Request, res: Response): void => {
@@ -82,7 +66,8 @@ app.get("/", (req: Request, res: Response): void => {
   });
 });
 
-app.post("/api/event", (req: Request, res: Response): void => {
+//*** API Endpoint **/
+app.post("/event", (req: Request, res: Response): void => {
   const data = req.body as EventRequestBody;
 
   receivedData.push(data);
@@ -104,7 +89,7 @@ app.post("/api/event", (req: Request, res: Response): void => {
   });
 });
 
-app.get("/api/event", (req: Request, res: Response): void => {
+app.get("/event", (req: Request, res: Response): void => {
   const limitParam =
     typeof req.query.limit === "string" ? req.query.limit : undefined;
   const limit = limitParam ? parseInt(limitParam, 10) : 10;
@@ -119,7 +104,7 @@ app.get("/api/event", (req: Request, res: Response): void => {
   });
 });
 
-app.get("/api/subscribers", (req: Request, res: Response): void => {
+app.get("/subscribers", (req: Request, res: Response): void => {
   res.json({
     success: true,
     count: connectedClients.size,
@@ -127,7 +112,7 @@ app.get("/api/subscribers", (req: Request, res: Response): void => {
   });
 });
 
-app.get("/api/subscribe", (req: Request, res: Response): void => {
+app.get("/subscribe", (req: Request, res: Response): void => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -169,7 +154,7 @@ app.get("/api/subscribe", (req: Request, res: Response): void => {
   void sendUpdate;
 });
 
-app.delete("/api/event", (req: Request, res: Response): void => {
+app.delete("/event", (req: Request, res: Response): void => {
   receivedData = [];
   requestCount = 0;
 
@@ -190,13 +175,13 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction): void => {
 
   io.emit("server_error", {
     type: "server_error",
-    message: "wrong ort",
+    message: "server error",
     timestamp: new Date().toISOString(),
   });
 
   res.status(500).json({
     success: false,
-    error: "Erro",
+    error: "Error",
     message: err.message,
   });
 });
