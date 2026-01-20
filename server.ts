@@ -16,8 +16,8 @@ const io = new SocketIOServer(server, {
   },
 });
 
-const webhook_url =
-  process.env.WEBHOOK_URL || "https://tech-task.splytech.dev/api/eng/tunnel";
+const webhook_url = process.env.WEBHOOK_URL || "https://tech-task.splytech.dev/api/eng/tunnel";
+const publicUrl = process.env.PUBLIC_URL || `https://jwrvx8q7-3000.asse.devtunnels.ms`;
 
 let receivedData: EventRequestBody[] = [];
 let requestCount = 0;
@@ -57,7 +57,7 @@ const notifyWebhook = (publicUrl: string): void => {
     const req = https.request(options, (res) => {
       console.log(`Webhook status: ${res.statusCode}`);
       console.log(`Webhook res: ${res}`);
-      res.on("data", () => {});
+      res.on("data", () => { });
     });
     req.on("error", (err) => {
       console.error("Failed to notify webhook", err);
@@ -107,9 +107,9 @@ io.on("connection", (socket: Socket): void => {
     const since = payload.since;
     const datetimeDate = parsedatetime(since);
 
-    const existingDriverId = socketDriverSubscriptions.get(socket.id);
-    if (existingDriverId && existingDriverId !== driverId) {
-      socket.leave(getDriverRoom(existingDriverId));
+    const currentDriverId = socketDriverSubscriptions.get(socket.id);
+    if (currentDriverId && currentDriverId !== driverId) {
+      socket.leave(getDriverRoom(currentDriverId));
     }
     socketDriverSubscriptions.set(socket.id, driverId);
     socket.join(getDriverRoom(driverId));
@@ -127,7 +127,7 @@ io.on("connection", (socket: Socket): void => {
         driverId: entry.data.driver,
         event: entry.event,
         data: entry.data,
-        replay: true,
+        // replay: true,
       });
     });
     socket.emit("driver_subscription_success", {
@@ -156,42 +156,30 @@ app.get("/", (req: Request, res: Response): void => {
 });
 
 //*** API Endpoint **/
-app.post("/event", (req: Request, res: Response): void => {
+app.post("/event", (req: Request, res: Response) => {
   const data = req.body as EventRequestBody;
-  const driverId = data.data.driver;
+  const driverId = data.data?.driver;
+  console.log("line 163", data)
 
-  if (!driverId) {
-    res.status(400).json({
-      success: false,
-      error: "liine 133:driver_id is required",
+  // Need to send response immediately else server will timeout
+  res.status(200).json({ success: true });
+
+  // emit location update
+  setImmediate(() => {
+    receivedData.push(data);
+    requestCount++;
+
+    const driverRoom = getDriverRoom(driverId);
+    io.to(driverRoom).emit("driver_location_update", {
+      type: "driver_location",
+      driverId,
+      event: data.event,
+      data: data.data,
     });
-    return;
-  }
-
-  receivedData.push(data);
-  requestCount++;
-  console.log(`Received #${requestCount} for driver ${driverId}:`, data);
-
-  // Broadcast driver location to subscribed clients
-  const driverRoom = getDriverRoom(driverId);
-  const subscribersCount = io.sockets.adapter.rooms.get(driverRoom)?.size || 0;
-  
-  io.to(driverRoom).emit("driver_location_update", {
-    type: "driver_location",
-    driverId,
-    event: data.event,
-    data: data.data,
-  });
-
-  res.status(201).json({
-    success: true,
-    message: "Data received and broadcasted successfully",
-    payload: data,
-    subscribersNotified: subscribersCount,
   });
 });
 
-app.get("/event", (req: Request, res: Response): void => {
+app.get("/event", (req: Request, res: Response) => {
   const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
   const recentData = receivedData.slice(-limit);
 
@@ -204,47 +192,12 @@ app.get("/event", (req: Request, res: Response): void => {
   });
 });
 
+// to check how many webscokects are connected
 app.get("/subscribers", (req: Request, res: Response): void => {
   res.json({
     success: true,
     count: connectedClients.size,
     message: `${connectedClients.size} subscribers currently connected`,
-  });
-});
-
-app.get("/subscribe", (req: Request, res: Response): void => {
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
-  });
-
-  res.write(
-    `data: ${JSON.stringify({
-      type: "connected",
-      message: "SSE connection established",
-      timestamp: new Date().toISOString(),
-    })}\n\n`,
-  );
-
-  const clientId = `sse-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 11)}`;
-  console.log(`SSE client connected: ${clientId}`);
-
-  const heartbeat = setInterval(() => {
-    res.write(
-      `data: ${JSON.stringify({
-        type: "heartbeat",
-        timestamp: new Date().toISOString(),
-      })}\n\n`,
-    );
-  }, 30000); // TODO: config interval with env
-
-  req.on("close", (): void => {
-    clearInterval(heartbeat);
-    console.log(`SSE client disconnected: ${clientId}`);
   });
 });
 
@@ -290,8 +243,8 @@ app.use((req: Request, res: Response): void => {
 server.listen(PORT, (): void => {
   console.log(`Server running on port ${PORT}`);
   console.log("WebSocket running on same host");
-    const publicUrl = process.env.PUBLIC_URL  || `https://m4493k74-3000.asse.devtunnels.ms/`;
-  notifyWebhook(publicUrl); // call webhook directly 
+
+  // notifyWebhook(publicUrl); // call webhook directly 
 });
 
 (module as any).exports = { app, server, io };
