@@ -27,18 +27,19 @@ const socketDriverSubscriptions: Map<string, string> = new Map<
   string
 >();
 
+//** Functions *//
 // get unique room name for driver 
 const getDriverRoom = (driverId: string): string => `driver:${driverId}`;
 
 // parse datetime string to Date object
 const parsedatetime = (value?: string): Date | null => {
   if (!value) return null;
-
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
 };
 
+// to directly call Splyt webhook on start
 const notifyWebhook = (publicUrl: string): void => {
   try {
     const payload = JSON.stringify({ public_url: publicUrl });
@@ -69,7 +70,7 @@ const notifyWebhook = (publicUrl: string): void => {
   }
 };
 
-//*** Socket **/
+//*** Socket **//
 io.on("connection", (socket: Socket): void => {
   console.log(`Client connected: ${socket.id}`);
   connectedClients.add(socket.id);
@@ -155,7 +156,7 @@ app.get("/", (req: Request, res: Response): void => {
   });
 });
 
-//*** API Endpoint **/
+//*** API Endpoint **//
 app.post("/event", (req: Request, res: Response) => {
   const data = req.body as EventRequestBody;
   const driverId = data.data?.driver;
@@ -244,7 +245,7 @@ server.listen(PORT, (): void => {
   console.log(`Server running on port ${PORT}`);
   console.log("WebSocket running on same host");
 
-  // notifyWebhook(publicUrl); // call webhook directly 
+  notifyWebhook(publicUrl); // call webhook directly 
 });
 
 (module as any).exports = { app, server, io };
