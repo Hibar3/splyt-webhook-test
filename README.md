@@ -1,5 +1,4 @@
-# splyt-webhook-test
-
+# Splyt-webhook-test
 Quickstart to run the service.
 
 ## Prerequisites
@@ -26,9 +25,9 @@ Server defaults to `http://localhost:3000`.
 - `GET /subscribers` — current connected websocket count.
 
 ## WebSocket endpoint
-- same as host `http://localhost:3000`
+- same as host. Default `http://localhost:3000`
 
 ## Env vars
-- `PORT` (default `3000`)
-- `PUBLIC_URL` — public tunnel URL
-- `WEBHOOK_URL`  webhook to notify on start
+- `PORT` - (default `3000`)
+- `PUBLIC_URL`- public tunnel URL
+- `WEBHOOK_URL` - webhook to notify on start
