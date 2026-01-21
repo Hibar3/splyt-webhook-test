@@ -14,7 +14,8 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -22,6 +23,7 @@
     "@types/helmet": "^4.0.0",
     "@types/morgan": "^1.9.10",
     "@types/socket.io": "^3.0.2",
+    "@types/socket.io-client": "^3.0.0",
     "concurrently": "^9.0.0",
     "nodemon": "^3.1.11",
     "rimraf": "^6.0.0",
