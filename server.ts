@@ -5,6 +5,9 @@ import morgan from "morgan";
 import helmet from "helmet";
 import http from "http";
 import https from "https";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -17,7 +20,7 @@ const io = new SocketIOServer(server, {
 });
 
 const webhook_url = process.env.WEBHOOK_URL || "https://tech-task.splytech.dev/api/eng/tunnel";
-const publicUrl = process.env.PUBLIC_URL || `https://jwrvx8q7-3000.asse.devtunnels.ms`;
+const publicUrl = process.env.PUBLIC_URL || ``;
 
 let receivedData: EventRequestBody[] = [];
 let requestCount = 0;
@@ -160,7 +163,7 @@ app.get("/", (req: Request, res: Response): void => {
 app.post("/event", (req: Request, res: Response) => {
   const data = req.body as EventRequestBody;
   const driverId = data.data?.driver;
-  console.log("line 163", data)
+  console.log("line 168; req:", data)
 
   // Need to send response immediately else server will timeout
   res.status(200).json({ success: true });
